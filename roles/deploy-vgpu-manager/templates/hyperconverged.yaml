@@ -1,0 +1,11 @@
+      spec:
+        configuration:
+          developerConfiguration:
+            featureGates:
+            - GPU
+          mediatedDevices:
+{% for host in HOST_LIST %}
+          - externalResourceProvider: true
+            mdevNameSelector: "{{ host['gpu'].split('/')[1] | replace('-', ' ') |replace('_', ' ') }}"
+            resourceName: "nvidia.com/{{ host['gpu'] }}"  
+{% endfor %}

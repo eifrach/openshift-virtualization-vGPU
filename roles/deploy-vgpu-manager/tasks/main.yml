@@ -1,0 +1,27 @@
+
+# - name: Enable MIG profile
+#   include_tasks: ./mig.yml
+#   args:
+#     apply:
+#       tags: 
+#       - mig
+#   tags:
+#   - mig
+ 
+- name: Configure vGPU
+  include_tasks: ./vgpu.yml
+  args:
+    apply:
+      tags: 
+      - vgpu
+  tags:
+  - vgpu
+
+- name: Configure Openshift Virtualization  
+  include_tasks: ./kubevirt.yml
+  args:
+    apply:
+      tags: 
+      - kubevirt
+  tags:
+  - kubevirt

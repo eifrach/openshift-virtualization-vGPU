@@ -1,0 +1,49 @@
+---
+- name: Get All nodes
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: v1
+    kind: Node
+  register: NODES
+
+- name: debug
+  debug:
+    msg: "{{ NODES.resources }}"
+
+- name: Genrating GPU types
+  set_fact:
+    HOST_LIST: |-
+      [
+      {% for host in NODES.resources %}
+        {% for key, value in host["status"]["allocatable"].items() %}
+
+          {% if ("nvidia.com" in key ) and ( key !=  "nvidia.com/gpu") %}
+          { "name" : "{{ host.metadata['name'] }}", "gpu": "{{ key }}"  },
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+      ]
+
+- name: Print hosts and GPU's found
+  debug:
+    msg: "{{ HOST_LIST }}"
+
+- name: Print HyperConvarge Patch
+  debug:
+    msg: "{{  lookup('ansible.builtin.template', 'hyperconverged.yaml') | from_yaml}}"
+  
+- name: Patch HyperConvarge policy 
+  kubernetes.core.k8s:
+    kubeconfig: "{{ KUBECONFIG }}"
+    namespace: "openshift-cnv"
+    state: present
+    wait: True
+    api_version: hco.kubevirt.io/v1beta1
+    kind: HyperConverged
+    name: "kubevirt-hyperconverged"
+    definition: "{{ lookup('ansible.builtin.template', 'hyperconverged.yaml') | from_yaml }}"
+  register: resp
+
+- name: Print HyperConvarge updated policy
+  debug:
+    msg: "{{ resp  }}"

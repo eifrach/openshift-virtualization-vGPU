@@ -1,0 +1,80 @@
+---
+# tasks file for roles/deploy-vgpu-manager
+- name: Create encrypted auth string
+  set_fact:
+    ENCRYPTED_AUTH: "{{ item | b64encode }}"
+  with_items: 
+    - "{{ PRIVATE_REGISTRY_USER}}:{{PRIVATE_REGISTRY_KEY }}"
+
+- name: Create private repo secret
+  kubernetes.core.k8s:
+    kubeconfig: "{{ KUBECONFIG }}"
+    state: present    
+    name: "{{ SECRET_NAME}}"
+    api_version: v1
+    kind: Secret
+    namespace: "{{  TARGET_NAMESPACE | default('nvidia-gpu-operator') }}"
+    definition:
+      data:
+        .dockerconfigjson: "{{  lookup('ansible.builtin.template', 'auth.json') | to_json | b64encode }}"
+      type: kubernetes.io/dockerconfigjson
+
+
+- name: Set Driver version
+  script:
+    cmd: filter_version.py "{{ DRIVER_FILE_PATH }}"
+  register: DRIVER_VERSION
+
+- name: setting Image Name
+  set_fact:
+    IMAGE_NAME: vgpu-manager
+    IMAGE_VERSION: "{{DRIVER_VERSION.stdout_lines[0]}}"
+
+- name: Push policy to openshift
+  script:
+    cmd: "update_policy.py set render -k={{ KUBECONFIG }} -p={{  lookup('ansible.builtin.template', 'update.json') | b64encode }}"
+
+- name: Enable IOMMU with machine config
+  kubernetes.core.k8s:
+    kubeconfig: "{{ KUBECONFIG }}"
+    state: present
+    name: 100-worker-iommu
+    api_version: machineconfiguration.openshift.io/v1
+    kind: MachineConfig
+    definition:
+      metadata:
+        labels:
+          machineconfiguration.openshift.io/role: master
+        name: 100-worker-iommu
+      spec:
+        config:
+          ignition:
+            version: 3.2.0
+        kernelArguments:
+            - intel_iommu=on
+  register: MCP
+
+- name: "Wait for machine config to start [ max 1 minutes ]"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: machineconfiguration.openshift.io/v1
+    kind: MachineConfigPool
+    name: "Worker"
+  register: resp
+  until: resp.resources[0].status.unavailableMachineCount is defined
+  retries: 10
+  delay: 6
+  when: MCP.changed
+
+
+- name: "Wait for machine config to complete [ max 5 minutes ]"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: machineconfiguration.openshift.io/v1
+    kind: MachineConfigPool
+    name: "Worker"
+  register: resp
+  until: resp.resources[0].status.unavailableMachineCount == 0
+  retries: 10
+  delay: 30
+  when: MCP.changed

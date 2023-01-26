@@ -1,0 +1,3 @@
+---
+# defaults file for roles/deploy-vgpu-manager
+SECRET_NAME: "private-registry-secret"

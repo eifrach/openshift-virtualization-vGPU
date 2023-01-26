@@ -1,0 +1,20 @@
+
+
+### Cluster KUBECONFIG path
+KUBECONFIG: ""
+
+
+NVIDIA_API_KEY: ""
+
+
+### private registry where the vgpu image will be push/pull from
+PRIVATE_REGISTRY: # "<myregistry.com/userspace >"
+PRIVATE_REGISTRY_USER: # "< USERNAME >"
+PRIVATE_REGISTRY_KEY:  # "< PASSWORD or KEY>"
+
+
+
+### nvidia files required from the build
+### you can get more information how to from the offical documentation 
+### https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/openshift/openshift-virtualization.html#building-the-vgpu-manager-image
+DRIVER_FILE_PATH: # < path/to/NVIDIA-Linux-x86_64-< version >-vgpu-kvm.run>

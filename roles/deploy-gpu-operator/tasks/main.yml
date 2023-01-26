@@ -1,0 +1,21 @@
+---
+# tasks file for deploy-gpu-operator
+- name: deploy NFD operator
+  include_tasks: nfd.yml
+  args:
+    apply:
+      tags: 
+      - nfd
+  tags:
+  - nfd
+
+- name:  deploy GPU Operator
+  include_tasks: ./gpu.yml
+  args:
+    apply:
+      tags: 
+      - gpu
+  tags:
+    - gpu
+
+

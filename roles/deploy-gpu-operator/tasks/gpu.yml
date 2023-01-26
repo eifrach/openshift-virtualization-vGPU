@@ -1,0 +1,108 @@
+---
+- name: "Using Namespace {{ TARGET_NAMESPACE | default('nvidia-gpu-operator') }}"
+  set_fact:
+    GPU_NS: "{{ TARGET_NAMESPACE | default('nvidia-gpu-operator') }}"
+
+- name: "Create namespace {{ GPU_NS }}"
+  kubernetes.core.k8s:
+    kubeconfig: "{{ KUBECONFIG }}"
+    apply: True
+    state: present
+    api_version: v1
+    kind: Namespace
+    name:  "{{ GPU_NS }}"
+
+
+- name: Create nvidia-gpu-operator OperatorGroup
+  kubernetes.core.k8s:
+    kubeconfig: "{{ KUBECONFIG }}"
+    state: present
+    apply: True
+    definition:
+      apiVersion: operators.coreos.com/v1
+      kind: OperatorGroup
+      metadata:
+        name: nvidia-gpu-operator
+        namespace: "{{ GPU_NS }}"
+      spec:
+        targetNamespaces:
+          - "{{ GPU_NS }}"
+
+- name: Get GPU operator version
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: packages.operators.coreos.com/v1
+    kind: PackageManifest
+    name: gpu-operator-certified
+    namespace:  openshift-marketplace
+  register: GPU_PACKAGE
+
+- name: Print version
+  debug:
+    msg:
+      - "using channel: {{ GPU_PACKAGE.resources[0].status.defaultChannel }}"
+
+- name: Create nvidia-gpu-operator Subscription
+  kubernetes.core.k8s:
+    kubeconfig: "{{ KUBECONFIG }}"
+    state: present
+    apply: True
+    definition:     
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: Subscription
+      metadata:
+        name: gpu-operator-certified
+        namespace: "{{ GPU_NS }}"
+      spec:
+        channel: "{{ GPU_PACKAGE.resources[0].status.defaultChannel }}"
+        installPlanApproval: Manual
+        name: gpu-operator-certified
+        source: certified-operators
+        sourceNamespace: openshift-marketplace
+        startingCSV: "gpu-operator-certified.{{ GPU_PACKAGE.resources[0].status.defaultChannel }}.1"
+
+- name: Get Install Plan 
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: operators.coreos.com/v1alpha1
+    kind: InstallPlan
+    namespace:  "{{ GPU_NS }}"
+  register: INSTALL_PLAN
+  until: INSTALL_PLAN.resources[0].metadata.name is defined 
+  retries: 6
+  delay: 10  
+
+- name: "Approve install plan {{ INSTALL_PLAN.resources[0].metadata.name }}"
+  kubernetes.core.k8s:
+    state: patched
+    api_version: operators.coreos.com/v1alpha1
+    kind: InstallPlan
+    name: "{{ INSTALL_PLAN.resources[0].metadata.name }}"
+    namespace: "{{ GPU_NS }}"
+    definition:
+      spec:
+        approved: true
+
+- name: Wait for API
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    namespace: "{{ GPU_NS }}"
+    name: "gpu-operator-certified.{{ GPU_PACKAGE.resources[0].status.defaultChannel }}.1"
+  register: resp
+  until: resp.resources[0].status.phase is defined 
+  retries: 6
+  delay: 10  
+
+- name: "Wait for installation to complete"
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    namespace: "{{ GPU_NS }}"
+    name: "gpu-operator-certified.{{ GPU_PACKAGE.resources[0].status.defaultChannel }}.1"
+  register: resp
+  until: resp.resources[0].status.phase == "Succeeded"
+  retries: 6
+  delay: 10

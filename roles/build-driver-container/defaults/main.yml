@@ -1,0 +1,8 @@
+---
+# defaults file for build-driver-container
+CLEAN: True
+GIT_REPO: "https://gitlab.com/nvidia/container-images/driver.git"
+
+CUDA_VERSION: 11.8.0
+OS_TAG: rhcos4.11
+

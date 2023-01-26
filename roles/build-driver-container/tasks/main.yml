@@ -1,0 +1,60 @@
+---
+# tasks file for build-driver-container
+- name: Creating random workdir name
+  set_fact:
+    WORKDIR: "/tmp/workdir-{{ lookup('community.general.random_string', base64=True)}}"
+
+- name: "GIT Cloning folder to into {{ WORKDIR }}"
+  shell: |
+    git clone  {{GIT_REPO}} {{WORKDIR}}; cd {{WORKDIR}}
+    FILTER_BRANCH_SQUELCH_WARNING=1 \
+    git filter-branch --prune-empty --subdirectory-filter vgpu-manager/rhel8 HEAD
+
+- name: "copy files to {{ WORKDIR }}"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ WORKDIR }}"
+  with_items:
+    - "{{DRIVER_FILE_PATH}}"
+
+- name: Set Driver version
+  script:
+    cmd: filter_version.py "{{ DRIVER_FILE_PATH }}"
+  register: DRIVER_VERSION
+
+- name: setting naming
+  set_fact:
+    IMAGE_NAME: "{{PRIVATE_REGISTRY}}/vgpu-manager:{{DRIVER_VERSION.stdout_lines[0]}}-{{OS_TAG}}"
+    AUTH_FILE: "/tmp/auth-{{ lookup('community.general.random_string', base64=True)}}.json"
+
+- name: fix Dockerfile
+  shell: 
+    cmd: |
+      sed  -i  's#FROM nvidia#FROM nvcr.io/nvidia#g'  Dockerfile
+    chdir:  "{{ WORKDIR }}"
+
+
+- name: Build image and push 
+  containers.podman.podman_image:
+    name: "{{ IMAGE_NAME }}"
+    path: "{{ WORKDIR }}"
+    push: yes
+    username: "{{ PRIVATE_REGISTRY_USER }}"
+    password: "{{ PRIVATE_REGISTRY_KEY }}"
+    build:
+      file: "{{ WORKDIR }}/Dockerfile"
+      cache: "{{ USE_CACHE | default('yes') }}"
+      extra_args: "--build-arg  DRIVER_VERSION={{DRIVER_VERSION.stdout_lines[0]}}  --build-arg CUDA_VERSION={{CUDA_VERSION}}"
+    
+
+- name: Remove workdir
+  ansible.builtin.file:
+    path: "{{ WORKDIR }}"
+    state: absent
+  when: CLEAN
+
+- name: Summary
+  debug:
+    msg: 
+      - "Pushed image"
+      - "name: {{ IMAGE_NAME }}"
