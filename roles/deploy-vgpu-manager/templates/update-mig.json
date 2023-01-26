@@ -1,0 +1,10 @@
+{
+	"spec": {
+		"mig": {
+			"strategy": "mixed"			
+		},
+        "migManager": {
+            "enabled": True
+		}
+	}
+}

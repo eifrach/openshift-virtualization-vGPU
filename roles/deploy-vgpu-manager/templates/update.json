@@ -1,0 +1,24 @@
+{
+	"spec": {
+		"sandboxWorkloads": {
+			"enabled": True
+		},
+        "vgpuDeviceManager": {
+            "enabled": True,
+            "config" : {
+                "name": "",
+                "default": "default"
+            }
+        },
+        "migManager": {
+            "enabled": False
+        },
+		"vgpuManager": {
+			"enabled": True,
+			"image": "{{IMAGE_NAME}}",
+			"repository": "{{PRIVATE_REGISTRY}}",
+			"version": "{{IMAGE_VERSION}}",
+			"imagePullSecrets": ["{{SECRET_NAME}}"]
+		}
+	}
+}

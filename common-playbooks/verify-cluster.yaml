@@ -1,0 +1,37 @@
+---
+- name: verify KUBECONFIG file path
+  stat:
+    path: "{{ KUBECONFIG }}"
+  register: KUBECONFIG_PATH
+  tags: [test, all]
+
+- name: assert KUBECONFIG_PATH
+  fail:
+    msg: "Cloud not locate KUBECONFIG path"
+  when: not KUBECONFIG_PATH.stat.exists
+  tags: [test, all]
+
+
+- name: Verify cluster API avilable 
+  kubernetes.core.k8s_cluster_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+  tags: [test, all]
+
+- name: Get Openshift HCO subscription
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ KUBECONFIG }}"
+    api_version: operators.coreos.com/v1alpha1
+    kind: Subscription
+    name: hco-operatorhub
+    namespace: openshift-cnv
+  register: HCO
+  tags: [test, all]
+
+- name: HCO installed version
+  debug:
+    msg:
+      - "name: {{ HCO.resources[0].spec.name }}"
+      - "channel: {{ HCO.resources[0].spec.channel }}"
+      - "csv: {{ HCO.resources[0].status.installedCSV }}"
+  tags: [test, all]        
+    

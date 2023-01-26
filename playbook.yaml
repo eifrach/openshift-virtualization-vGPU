@@ -1,0 +1,36 @@
+---
+- hosts: all
+  connection: local
+  gather_facts: False
+  tasks:
+      - name: verify connection to cluster 
+        ansible.builtin.include_tasks: common-playbooks/verify-cluster.yaml
+        tags:
+          - test
+          - always
+
+      - name: build driver image
+        ansible.builtin.include_role: 
+          name: build-driver-container
+          apply:
+            tags:
+            - build
+        tags:
+          - build
+          - push
+  
+      - name: Deploy GPU opertator
+        ansible.builtin.include_role: 
+          name: deploy-gpu-operator
+        tags:
+          - nfd
+          - gpu
+
+
+      - name: Deploy vGPU manager
+        ansible.builtin.include_role: 
+          name: deploy-vgpu-manager
+        tags:
+          - vgpu
+          - kubevirt
+        
