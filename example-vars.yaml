@@ -4,9 +4,6 @@
 KUBECONFIG: ""
 
 
-NVIDIA_API_KEY: ""
-
-
 ### private registry where the vgpu image will be push/pull from
 PRIVATE_REGISTRY: # "<myregistry.com/userspace >"
 PRIVATE_REGISTRY_USER: # "< USERNAME >"
