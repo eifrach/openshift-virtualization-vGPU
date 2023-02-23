@@ -68,22 +68,22 @@ def getNamespace() -> str:
 
 def actionGetRander() -> None:
     if args.use_current:
-        policy = getCurrentPolicy(KUBECONFIG=GetkubeConfig())
+        policy = getCurrentPolicy(KUBECONFIG=args.kubeconfig)
     else:
-        policy = getNvidiaExamplePolicy(KUBECONFIG=GetkubeConfig())
+        policy = getNvidiaExamplePolicy(KUBECONFIG=args.kubeconfig)
         print(patchUpdateWithPolicy(policy=policy, update=verifyUpdateFile(args.patch)))
 
 def actionSetDefault() -> None:
-    default_policy = getNvidiaExamplePolicy(KUBECONFIG=GetkubeConfig())
-    applyJsontoOpnshift(KUBECONFIG=GetkubeConfig(), file=default_policy)
+    default_policy = getNvidiaExamplePolicy(KUBECONFIG=args.kubeconfig)
+    applyJsontoOpnshift(KUBECONFIG=args.kubeconfig, file=default_policy)
 
 def actionSetRander() -> None:
     if args.use_current:
-        policy = getCurrentPolicy(KUBECONFIG=GetkubeConfig())
+        policy = getCurrentPolicy(KUBECONFIG=args.kubeconfig)
     else:
-        policy = getNvidiaExamplePolicy(KUBECONFIG=GetkubeConfig())
+        policy = getNvidiaExamplePolicy(KUBECONFIG=args.kubeconfig)
     renderd_policy = patchUpdateWithPolicy(policy=policy, update=verifyUpdateFile(args.patch))
-    if applyJsontoOpnshift(KUBECONFIG=GetkubeConfig(), file=renderd_policy):
+    if applyJsontoOpnshift(KUBECONFIG=args.kubeconfig, file=renderd_policy):
         print(renderd_policy)
 
 def CheckPath(kubeconfig_path: str) -> bool:
